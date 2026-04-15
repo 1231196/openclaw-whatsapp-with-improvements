@@ -48,6 +48,7 @@ openclaw-whatsapp (Go binary)
 - `POST /logout` — unlink device
 
 ### Messaging
+- `POST /groups` — `{"name": "Team", "participants": ["+971...", "+972..."]}`
 - `POST /send/text` — `{"to": "+971...", "message": "hello"}`
 - `POST /send/file` — multipart: file + to + caption
 - `GET /messages?chat=JID&limit=50` — get recent messages from a chat

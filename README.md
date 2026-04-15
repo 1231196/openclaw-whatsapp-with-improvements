@@ -38,6 +38,7 @@ journalctl --user -u openclaw-whatsapp -f
 
 ## Features
 
+- **Group creation** — create WhatsApp groups from the HTTP API
 - **Always-on connection** — auto-reconnect with exponential backoff
 - **REST API** — send text/files, read messages, search, list chats/contacts
 - **QR Web UI** — scan from browser, auto-refreshes every 3s

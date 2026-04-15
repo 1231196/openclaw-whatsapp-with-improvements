@@ -415,6 +415,38 @@ func (c *Client) SendFile(ctx context.Context, to string, data []byte, mimetype,
 	return nil
 }
 
+// CreateGroup creates a new WhatsApp group with the given name and participants.
+func (c *Client) CreateGroup(ctx context.Context, name string, participantIDs []string) (*types.GroupInfo, error) {
+	if c.client == nil || !c.client.IsConnected() {
+		return nil, fmt.Errorf("client is not connected")
+	}
+	if name == "" {
+		return nil, fmt.Errorf("group name is required")
+	}
+	if len(participantIDs) == 0 {
+		return nil, fmt.Errorf("at least one participant is required")
+	}
+
+	participants := make([]types.JID, 0, len(participantIDs))
+	for _, participantID := range participantIDs {
+		jid, err := parseJID(participantID)
+		if err != nil {
+			return nil, fmt.Errorf("parse participant %q: %w", participantID, err)
+		}
+		participants = append(participants, jid)
+	}
+
+	groupInfo, err := c.client.CreateGroup(ctx, whatsmeow.ReqCreateGroup{
+		Name:         name,
+		Participants: participants,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create group: %w", err)
+	}
+
+	return groupInfo, nil
+}
+
 // --- helpers ----------------------------------------------------------------
 
 // parseJID converts a string to a types.JID. If the string contains "@" it is
