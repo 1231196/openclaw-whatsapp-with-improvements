@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log/slog"
@@ -37,6 +38,8 @@ type Client struct {
 	status    Status
 	latestQR  string
 	qrChan    <-chan whatsmeow.QRChannelItem
+	createdGroups     map[string]struct{}
+	createdGroupsPath string
 	mu        sync.RWMutex
 	log       *slog.Logger
 	startTime time.Time
@@ -66,6 +69,8 @@ func NewClient(dataDir string, log *slog.Logger) (*Client, error) {
 	return &Client{
 		container: container,
 		status:    StatusDisconnected,
+		createdGroups: loadCreatedGroups(filepath.Join(dataDir, "created_groups.txt")),
+		createdGroupsPath: filepath.Join(dataDir, "created_groups.txt"),
 		log:       log,
 		startTime: time.Now(),
 		dataDir:   dataDir,
@@ -444,7 +449,63 @@ func (c *Client) CreateGroup(ctx context.Context, name string, participantIDs []
 		return nil, fmt.Errorf("create group: %w", err)
 	}
 
+	c.rememberCreatedGroup(groupInfo.JID.String())
+
 	return groupInfo, nil
+}
+
+// GetGroupInviteLink returns the invite link for a WhatsApp group JID.
+func (c *Client) GetGroupInviteLink(ctx context.Context, groupJID string) (string, error) {
+	if c.client == nil || !c.client.IsConnected() {
+		return "", fmt.Errorf("client is not connected")
+	}
+
+	jid, err := parseJID(groupJID)
+	if err != nil {
+		return "", fmt.Errorf("parse group JID: %w", err)
+	}
+
+	link, err := c.client.GetGroupInviteLink(ctx, jid, false)
+	if err != nil {
+		return "", fmt.Errorf("get group invite link: %w", err)
+	}
+
+	return link, nil
+}
+
+// IsCreatedGroup reports whether a group JID was created via this service.
+func (c *Client) IsCreatedGroup(groupJID string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	_, ok := c.createdGroups[groupJID]
+	return ok
+}
+
+// rememberCreatedGroup stores the group JID in memory and on disk.
+func (c *Client) rememberCreatedGroup(groupJID string) {
+	if groupJID == "" {
+		return
+	}
+
+	c.mu.Lock()
+	if _, exists := c.createdGroups[groupJID]; exists {
+		c.mu.Unlock()
+		return
+	}
+	c.createdGroups[groupJID] = struct{}{}
+	path := c.createdGroupsPath
+	c.mu.Unlock()
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		c.log.Warn("failed to persist created group", "error", err, "group_jid", groupJID)
+		return
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(groupJID + "\n"); err != nil {
+		c.log.Warn("failed to append created group", "error", err, "group_jid", groupJID)
+	}
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -506,4 +567,25 @@ func (c *Client) setStatus(s Status) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.status = s
+}
+
+func loadCreatedGroups(path string) map[string]struct{} {
+	groups := make(map[string]struct{})
+
+	f, err := os.Open(path)
+	if err != nil {
+		return groups
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		jid := strings.TrimSpace(scanner.Text())
+		if jid == "" {
+			continue
+		}
+		groups[jid] = struct{}{}
+	}
+
+	return groups
 }

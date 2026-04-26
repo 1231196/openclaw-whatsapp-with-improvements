@@ -36,10 +36,17 @@ func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 		participants = append(participants, participant.JID.String())
 	}
 
+	inviteLink, err := s.Client.GetGroupInviteLink(r.Context(), groupInfo.JID.String())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"jid":              groupInfo.JID.String(),
 		"name":             groupInfo.Name,
 		"participant_count": groupInfo.ParticipantCount,
 		"participants":     participants,
+		"invite_link":      inviteLink,
 	})
 }

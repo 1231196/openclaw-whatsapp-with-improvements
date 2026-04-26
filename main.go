@@ -139,7 +139,12 @@ func runStart(configPath string) error {
 		DMOnly:       cfg.WebhookFilters.DMOnly,
 		IgnoreGroups: cfg.WebhookFilters.IgnoreGroups,
 	}
-	webhook := bridge.NewWebhookSender(cfg.WebhookURL, webhookFilters, log)
+	webhookURL := cfg.WebhookURL
+	if webhookURL == "" {
+		webhookURL = "http://127.0.0.1:8000/webhook/whatsapp"
+		log.Info("using default webhook url", "url", webhookURL)
+	}
+	webhook := bridge.NewWebhookSender(webhookURL, webhookFilters, log)
 
 	// 5b. Create agent trigger
 	agent := bridge.NewAgentTrigger(

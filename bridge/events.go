@@ -173,14 +173,17 @@ func handleMessage(client *Client, msg *events.Message, msgStore *store.MessageS
 
 	// Build and send webhook payload.
 	chatType := "dm"
+	groupID := ""
 	if isGroup {
 		chatType = "group"
+		groupID = chatJID
 	}
 
 	payload := &WebhookPayload{
 		From:      chatJID,
 		Name:      senderName,
 		Message:   content,
+		GroupID:   groupID,
 		Timestamp: msg.Info.Timestamp.Unix(),
 		Type:      msgType,
 		MediaURL:  mediaPath,
@@ -189,7 +192,9 @@ func handleMessage(client *Client, msg *events.Message, msgStore *store.MessageS
 		MessageID: msg.Info.ID,
 	}
 
-	if err := webhook.Send(payload); err != nil {
+	if isGroup && !client.IsCreatedGroup(chatJID) {
+		log.Debug("skipping webhook for unmanaged group", "group_jid", chatJID, "message_id", msg.Info.ID)
+	} else if err := webhook.Send(payload); err != nil {
 		log.Error("failed to send webhook", "error", err, "message_id", msg.Info.ID)
 	}
 
