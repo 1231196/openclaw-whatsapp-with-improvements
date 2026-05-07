@@ -2,10 +2,14 @@ package bridge
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -36,6 +40,7 @@ type WebhookFilters struct {
 // deduplication and filtering.
 type WebhookSender struct {
 	url     string
+	token   string
 	filters WebhookFilters
 	seen    map[string]time.Time // message ID -> first seen time (dedup)
 	mu      sync.Mutex
@@ -49,9 +54,10 @@ const seenTTL = 5 * time.Minute
 // NewWebhookSender creates a WebhookSender ready to POST payloads to the given
 // url. If url is empty the sender is effectively a no-op (Send returns nil
 // immediately).
-func NewWebhookSender(url string, filters WebhookFilters, log *slog.Logger) *WebhookSender {
+func NewWebhookSender(url string, token string, filters WebhookFilters, log *slog.Logger) *WebhookSender {
 	return &WebhookSender{
 		url:     url,
+		token:   token,
 		filters: filters,
 		seen:    make(map[string]time.Time),
 		client: &http.Client{
@@ -104,7 +110,28 @@ func (w *WebhookSender) Send(payload *WebhookPayload) error {
 	}
 
 	// POST to the configured URL.
-	resp, err := w.client.Post(w.url, "application/json", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, w.url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("webhook request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if w.token != "" {
+		req.Header.Set("Authorization", "Bearer "+w.token)
+	}
+
+	webhookSecret := os.Getenv("WHATSAPP_WEBHOOK_SECRET")
+	if webhookSecret != "" {
+		timestamp := fmt.Sprintf("%d", time.Now().Unix())
+		mac := hmac.New(sha256.New, []byte(webhookSecret))
+		mac.Write([]byte(timestamp))
+		mac.Write([]byte("."))
+		mac.Write(body)
+		signature := hex.EncodeToString(mac.Sum(nil))
+		req.Header.Set("X-WhatsApp-Timestamp", timestamp)
+		req.Header.Set("X-WhatsApp-Signature", signature)
+	}
+
+	resp, err := w.client.Do(req)
 	if err != nil {
 		w.log.Error("webhook delivery failed", "error", err, "message_id", payload.MessageID)
 		return fmt.Errorf("webhook POST: %w", err)

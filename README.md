@@ -59,6 +59,7 @@ Create `config.yaml` in the working directory or use environment variables (`OC_
 port: 8555
 data_dir: ~/.openclaw-whatsapp
 webhook_url: http://localhost:1337/webhook/whatsapp
+webhook_token: ""
 webhook_filters:
   dm_only: false
   ignore_groups: []
@@ -67,7 +68,7 @@ reconnect_interval: 30s
 log_level: info
 ```
 
-Environment variables: `OC_WA_PORT`, `OC_WA_WEBHOOK_URL`, `OC_WA_DATA_DIR`, etc.
+Environment variables: `OC_WA_PORT`, `OC_WA_WEBHOOK_URL`, `OC_WA_WEBHOOK_TOKEN`, `OC_WA_DATA_DIR`, etc.
 
 ---
 

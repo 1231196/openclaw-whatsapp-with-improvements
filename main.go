@@ -147,7 +147,7 @@ func runStart(configPath string) error {
 		webhookURL = "http://127.0.0.1:8000/webhook/whatsapp"
 		log.Info("using default webhook url", "url", webhookURL)
 	}
-	webhook := bridge.NewWebhookSender(webhookURL, webhookFilters, log)
+	webhook := bridge.NewWebhookSender(webhookURL, cfg.WebhookToken, webhookFilters, log)
 
 	// 5b. Create agent trigger
 	agent := bridge.NewAgentTrigger(

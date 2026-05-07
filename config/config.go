@@ -40,6 +40,7 @@ type Config struct {
 	Port               int            `yaml:"port"`
 	DataDir            string         `yaml:"data_dir"`
 	WebhookURL         string         `yaml:"webhook_url"`
+	WebhookToken       string         `yaml:"webhook_token"`
 	WebhookFilters     WebhookFilters `yaml:"webhook_filters"`
 	AutoReconnect      bool           `yaml:"auto_reconnect"`
 	ReconnectInterval  Duration       `yaml:"reconnect_interval"`
@@ -82,6 +83,7 @@ func defaults() *Config {
 		Port:              8555,
 		DataDir:           filepath.Join(homeDir, ".openclaw-whatsapp"),
 		WebhookURL:        "",
+		WebhookToken:      "",
 		WebhookFilters:    WebhookFilters{},
 		AutoReconnect:     true,
 		ReconnectInterval: Duration{30 * time.Second},
@@ -130,6 +132,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("OC_WA_WEBHOOK_URL"); v != "" {
 		cfg.WebhookURL = v
+	}
+	if v := os.Getenv("OC_WA_WEBHOOK_TOKEN"); v != "" {
+		cfg.WebhookToken = v
 	}
 	if v := os.Getenv("OC_WA_LOG_LEVEL"); v != "" {
 		cfg.LogLevel = v
