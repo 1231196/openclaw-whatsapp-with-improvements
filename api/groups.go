@@ -85,6 +85,10 @@ type createGroupRequest struct {
 	Participants []string `json:"participants"`
 }
 
+type joinGroupRequest struct {
+	InviteLink string `json:"invite_link"`
+}
+
 func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -139,5 +143,44 @@ func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 		"participant_count": groupInfo.ParticipantCount,
 		"participants":     participants,
 		"invite_link":      inviteLink,
+	})
+}
+
+func (s *Server) handleJoinGroup(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if !validateWhatsAppSecret(w, r) {
+		return
+	}
+
+	if !validateWhatsAppSignature(w, r, body) {
+		return
+	}
+
+	r.Body = io.NopCloser(bytes.NewReader(body))
+
+	var req joinGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if strings.TrimSpace(req.InviteLink) == "" {
+		writeError(w, http.StatusBadRequest, "invite_link is required")
+		return
+	}
+
+	groupJID, err := s.Client.JoinGroupWithLink(r.Context(), req.InviteLink)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"jid":         groupJID.String(),
+		"invite_link": strings.TrimSpace(req.InviteLink),
 	})
 }

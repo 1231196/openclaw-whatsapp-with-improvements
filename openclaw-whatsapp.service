@@ -1,5 +1,5 @@
 [Unit]
-Description=OpenClaw WhatsApp Bridge
+Description=Go WhatsApp Bridge
 After=network-online.target
 Wants=network-online.target
 

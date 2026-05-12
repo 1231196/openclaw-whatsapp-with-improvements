@@ -454,6 +454,25 @@ func (c *Client) CreateGroup(ctx context.Context, name string, participantIDs []
 	return groupInfo, nil
 }
 
+// JoinGroupWithLink joins an existing WhatsApp group using an invite link.
+func (c *Client) JoinGroupWithLink(ctx context.Context, inviteLink string) (types.JID, error) {
+	if c.client == nil || !c.client.IsConnected() {
+		return types.EmptyJID, fmt.Errorf("client is not connected")
+	}
+	if strings.TrimSpace(inviteLink) == "" {
+		return types.EmptyJID, fmt.Errorf("invite link is required")
+	}
+
+	jid, err := c.client.JoinGroupWithLink(ctx, inviteLink)
+	if err != nil {
+		return types.EmptyJID, fmt.Errorf("join group with link: %w", err)
+	}
+
+	c.rememberCreatedGroup(jid.String())
+
+	return jid, nil
+}
+
 // GetGroupInviteLink returns the invite link for a WhatsApp group JID.
 func (c *Client) GetGroupInviteLink(ctx context.Context, groupJID string) (string, error) {
 	if c.client == nil || !c.client.IsConnected() {

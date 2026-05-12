@@ -44,6 +44,7 @@ func NewRouter(s *Server) http.Handler {
 	r.Get("/messages", s.handleGetMessages)
 	r.Get("/messages/search", s.handleSearchMessages)
 	r.Post("/groups", s.handleCreateGroup)
+	r.Post("/groups/join", s.handleJoinGroup)
 
 	// Contacts & chats
 	r.Get("/chats", s.handleGetChats)
